@@ -12,7 +12,7 @@ if __name__ == '__main__':
     message_list = get_messages_with_attachments(service, query)
     with open('5photos.csv', "w") as fd:
         for msg in message_list:
-            fd.write(f"{msg['filename']}\t{msg['date']}\n")
+            fd.write(f"\"{msg['filename']}\"\t\"{msg['date']}\"\n")
     
 
 
