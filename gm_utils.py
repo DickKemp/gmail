@@ -137,7 +137,7 @@ def extract_sms(service, msg, message_id):
     result['id'] = message_id
     for header in msg['payload']['headers']:
         if header['name'] == 'Date':
-            result['date'] = header['value']
+            result['date'] = header['value'] 
         if header['name'] == 'From':
             result['from'] = header['value']
         if header['name'] == 'To':
@@ -146,6 +146,8 @@ def extract_sms(service, msg, message_id):
             result['addr'] = header['value']
         if header['name'] == 'X-smssync-thread':
             result['thread'] = header['value']
+        if header['name'] == 'Subject':
+            result['subject'] = header['value']
     return [result]
 
 
@@ -173,6 +175,37 @@ def sms_messages_iterator(service, query, max_page):
         messages, cursor = _get_messages(service, query, msg_extractor=extract_sms, max_results=max_page, cursor=cursor)
         yield messages
 
+def sms_thread_iterator(service, query, max_page):
+    """ 
+    """
+    threads, cursor = _get_threads(service, query, max_results=max_page, thread_extractor=thread_extractor)
+    yield threads
+    
+    while cursor:
+        threads, cursor = _get_threads(service, query,thread_extractor=thread_extractor, max_results=max_page, cursor=cursor)
+        yield threads
+
+def _get_threads(service, query, thread_extractor, max_results, cursor=None):
+    results_list = []
+    thread_list = service.users().threads().list(userId='me', pageToken=cursor, q=query, maxResults=max_results).execute()
+    threads = thread_list.get('threads', [])
+    pageToken = thread_list.get('nextPageToken', None)
+
+    for m in threads:
+        thread_id = m['id']
+        thread = service.users().threads().get(userId='me', id=thread_id, format='minimal').execute()
+        results = thread_extractor(service, thread)
+        results_list = results_list + results
+    return results_list, pageToken    
+
+def thread_extractor(service, thread):
+    result = {}
+    result['thread_id'] = thread['id']
+    result['message_ids'] = []
+    messages = thread['messages']
+    for msg in messages:
+        result['message_ids'].append(msg['id'])
+    return [result]
 
 def download_attachment(service, attachment_id, message_id, filename):
     """ download_attachment will use the gmail service to download the attachment identified by attachment_id

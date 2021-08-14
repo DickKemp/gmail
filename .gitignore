@@ -1,11 +1,13 @@
 photos/
-credentials.json
+credentials*.json
 token.pickle
-sms/
+sms*/
+threads*/
 *.csv
 *.xlsx
 *.tsv
 *.jpeg
-*.jpeg
+*.jpg
 *.pyc
 .vscode/
+identity.pyc
