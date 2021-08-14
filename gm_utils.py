@@ -71,6 +71,109 @@ def find_messages_that_have_attachments(service, query):
                     results_list.append(photo_message)
     return results_list
 
+def find_messages(service, query):
+    """ finds all messages that match the query and returns a list of objects with these attributes:
+        "filename" - file name of attachement
+        "snippet" - text of the messages
+        "message_id" - message id
+        "attachment_id" - attachment id
+        "date" - date the messages was received
+    """
+    results = service.users().messages().list(userId='me', q=query, maxResults=5000).execute()   
+    messages = results.get('messages', [])
+    results_list = []
+
+    if messages:
+        for m in messages:
+            msg_date = 'unknown'
+            message_id = m['id']
+            msg = service.users().messages().get(userId='me', id=message_id).execute()
+            snippet = msg.get('snippet', "")
+            for header in msg['payload']['headers']:
+                if header['name'] == 'Date':
+                    msg_date = header['value']
+            for part in msg['payload']['parts']:
+                filename = part['filename']
+                if 'attachmentId' in part['body']:
+                    attachment_id = part['body']['attachmentId']
+                    photo_message = { "filename" : filename,
+                                      "snippet" : snippet,
+                                      "message_id": message_id,
+                                      "attachment_id": attachment_id,
+                                      "date" : msg_date
+                                      }
+                    results_list.append(photo_message)
+    return results_list
+
+
+def extract_attachment(service, msg, message_id):
+    # https://developers.google.com/gmail/api/reference/rest/v1/users.messages#Message
+    results_list = []
+    snippet = msg.get('snippet', "")
+    for header in msg['payload']['headers']:
+        if header['name'] == 'Date':
+            msg_date = header['value']
+    payload = msg['payload']
+    if 'parts' in payload:
+        for part in msg['payload']['parts']:
+            filename = part['filename']
+            if 'attachmentId' in part['body']:
+                attachment_id = part['body']['attachmentId']
+                photo_message = { "filename" : filename,
+                                    "snippet" : snippet,
+                                    "message_id": message_id,
+                                    "attachment_id": attachment_id,
+                                    "date" : msg_date
+                                    }
+                results_list.append(photo_message)            
+    return results_list
+
+
+def extract_sms(service, msg, message_id):
+    # https://developers.google.com/gmail/api/reference/rest/v1/users.messages#Message
+
+    result = {}
+    result['snip'] = msg.get('snippet', "")
+    result['id'] = message_id
+    for header in msg['payload']['headers']:
+        if header['name'] == 'Date':
+            result['date'] = header['value']
+        if header['name'] == 'From':
+            result['from'] = header['value']
+        if header['name'] == 'To':
+            result['to'] = header['value']
+        if header['name'] == 'X-smssync-address':
+            result['addr'] = header['value']
+        if header['name'] == 'X-smssync-thread':
+            result['thread'] = header['value']
+    return [result]
+
+
+def _get_messages(service, query, msg_extractor, max_results, cursor=None):
+    results_list = []
+    message_list = service.users().messages().list(userId='me', pageToken=cursor, q=query, maxResults=max_results).execute()
+    messages = message_list.get('messages', [])
+    pageToken = message_list.get('nextPageToken', None)
+
+    if messages:
+        for m in messages:
+            message_id = m['id']
+            msg = service.users().messages().get(userId='me', id=message_id).execute()
+            results = msg_extractor(service, msg, message_id)
+            results_list = results_list + results
+    return results_list, pageToken    
+
+def sms_messages_iterator(service, query, max_page):
+    """ 
+    """
+    messages, cursor = _get_messages(service, query, max_results=max_page, msg_extractor=extract_sms)
+    yield messages
+    
+    while cursor:
+        messages, cursor = _get_messages(service, query, msg_extractor=extract_sms, max_results=max_page, cursor=cursor)
+        yield messages
+
+
 def download_attachment(service, attachment_id, message_id, filename):
     """ download_attachment will use the gmail service to download the attachment identified by attachment_id
     from the message identified by message_id, and will store the result in a local file
