@@ -1,3 +1,11 @@
 photos/
 credentials.json
 token.pickle
+sms/
+*.csv
+*.xlsx
+*.tsv
+*.jpeg
+*.jpeg
+*.pyc
+.vscode/
