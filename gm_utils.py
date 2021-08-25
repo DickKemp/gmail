@@ -176,7 +176,7 @@ def sms_messages_iterator(service, query, max_page):
         yield messages
 
 def sms_thread_iterator(service, query, max_page):
-    """ 
+    """ https://developers.google.com/gmail/api/reference/rest/v1/users.threads#Thread 
     """
     threads, cursor = _get_threads(service, query, max_results=max_page, thread_extractor=thread_extractor)
     yield threads

@@ -11,3 +11,4 @@ threads*/
 *.pyc
 .vscode/
 identity.pyc
+tmp/

@@ -9,7 +9,9 @@ ID="id"
 FROM="from"
 TO="to"
 ADDR="addr"
+DAY="dateday"
 DATE="date"
+TIME="datetime"
 THREAD="thread"
 SUBJECT="subject"
 THREAD_GRP="thread_grp"
@@ -39,7 +41,9 @@ def standardize_datetime(dt_str):
     """
     std_dt = datetime.strptime(dt_str, "%a, %d %b %Y %X %z")
     std_date_str = datetime.strftime(std_dt, "%Y%m%dT%X")
-    return std_date_str
+    std_datetime_str = datetime.strftime(std_dt, "%Y-%m-%dT%XZ")
+    std_dateday_str = datetime.strftime(std_dt, "%Y-%m-%d")
+    return std_date_str, std_datetime_str, std_dateday_str
 
 if __name__ == '__main__':
     # sms: the full list of messages with raw attribute
@@ -53,11 +57,15 @@ if __name__ == '__main__':
     with open("all_msgs-initial.json", "w") as fd:
         print(json.dumps(sms, indent=4), file=fd)
 
+
+    with open("all_threads.json", "w") as fd:
+        print(json.dumps(threads, indent=4), file=fd)
+
     # messages: maps msg_id to the message 
     # at time same time, format the datetime to a simpler standard local time
     messages = dict()
     for msg in sms:
-        msg[DATE] = standardize_datetime(msg[DATE])
+        msg[DATE], msg[TIME], msg[DAY] = standardize_datetime(msg[DATE])
         messages[msg[ID]] = msg
 
     # time_to_msgs: maps msg time to the set of msg_ids that were delivered at that time
@@ -117,7 +125,7 @@ if __name__ == '__main__':
             new_sms.append(messages[m[ID]])
     sms = new_sms
     # finally, sort the messages in sms based on the time    
-    sms.sort(key=lambda msg: msg[DATE])
+    sms.sort(key=lambda msg: msg[TIME])
 
     # print the distrubtion of thread-group sizes
     sizes = collections.Counter()
